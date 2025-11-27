@@ -67,7 +67,7 @@ passport.deserializeUser(async (username, done) => {
   } catch (err) {
     done(err);
   }
-}));
+});
 
 // Роуты
 app.use(express.static(path.join(__dirname, '../dist'))); // Фронт

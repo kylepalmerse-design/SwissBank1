@@ -14,11 +14,11 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 10000;
 
+// Body parser для JSON (до session)
+app.use(express.json());
+
 // Cookie parser перед session
 app.use(cookieParser());
-
-// Body parser для JSON
-app.use(express.json());
 
 // Pool для Postgres (NeonDB)
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
@@ -72,7 +72,7 @@ passport.deserializeUser(async (username, done) => {
 // Роуты
 app.use(express.static(path.join(__dirname, '../dist'))); // Фронт
 
-app.post('/api/auth/login', passport.authenticate('local', { failureRedirect: '/login', successRedirect: '/dashboard' }), (req, res) => {
+app.post('/api/auth/login', passport.authenticate('local', { failureMessage: true }), (req, res) => {
   res.json({ success: true, user: { username: req.user.username } });
 });
 
@@ -87,4 +87,4 @@ app.get('/api/user', (req, res) => {
 // Catch-all для SPA
 app.get('*', (req, res) => res.sendFile(path.join(__dirname, '../dist/index.html')));
 
-app.listen(PORT, () => console.log(`serving on port ${PORT}`));
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

@@ -14,26 +14,31 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 10000;
 
-// Body parser для JSON
+// Body parser для JSON (до session)
 app.use(express.json());
 
-// Body parser для form-data
+// Body parser для form-data (urlencoded) перед session
 app.use(express.urlencoded({ extended: true }));
 
 // Cookie parser перед session
 app.use(cookieParser());
 
-// Pool для Postgres
+// Pool для Postgres (NeonDB)
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
-// Session с PG store
+// Session с PG store для production (таблица sessions создастся автоматически)
 const PGStore = pgSimple(session);
 app.use(session({
   store: new PGStore({ pool, tableName: 'sessions' }),
   secret: process.env.SESSION_SECRET || 'swiss-bank-secret-2025',
   resave: false,
   saveUninitialized: false,
-  cookie: { path: '/', secure: true, httpOnly: true, sameSite: 'lax', maxAge: 24 * 60 * 60 * 1000 }
+  cookie: {
+    secure: process.env.NODE_ENV === 'production',
+    maxAge: 24 * 60 * 60 * 1000, // 1 день
+    httpOnly: true,
+    sameSite: 'strict'
+  }
 }));
 
 // Passport
@@ -65,7 +70,7 @@ passport.deserializeUser(async (username, done) => {
   } catch (err) {
     done(err);
   }
-}));
+});
 
 // Роуты
 app.use(express.static(path.join(__dirname, '../dist/public'))); // Фронт

@@ -1,101 +1,56 @@
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { type User } from "@shared/schema";
-import { Header } from "@/components/header";
-import { AccountCard } from "@/components/account-card";
-import { TransferModal } from "@/components/transfer-modal";
-import { formatCurrency, getGreeting } from "@/lib/utils-format";
-import { Skeleton } from "@/components/ui/skeleton";
-import { useLocation } from "wouter";
+import { useEffect, useState } from 'react';
+import { useRouter } from 'wouter';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 
 export default function Dashboard() {
-  const [, setLocation] = useLocation();
-  const [transferModalOpen, setTransferModalOpen] = useState(false);
-  const [selectedAccountId, setSelectedAccountId] = useState<string | undefined>();
+  const router = useRouter();
+  const [user, setUser] = useState(null);
+  const [loading, setLoading ] = useState(true);
 
-  const { data: user, isLoading, error } = useQuery<User>({
-    queryKey: ["/api/user"],
-    retry: 3,
-    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
-  });
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const response = await fetch('/api/user');
+        if (response.ok) {
+          const data = await response.json();
+          setUser(data.user);
+          setLoading(false);
+        } else {
+          router.push('/login');
+        }
+      } catch (err) {
+        router.push('/login');
+      }
+    };
+    fetchUser();
+  }, []);
 
-  // Redirect to login if not authenticated
-  if (!user && !isLoading && error) {
-    setLocation("/login");
-    return null;
+  if (loading) {
+    return <div className="flex min-h-screen items-center justify-center">Loading dashboard...</div>;
   }
 
-  if (!user && !isLoading) {
-    setLocation("/login");
-    return null;
+  if (!user) {
+    return <div>Redirecting to login...</div>;
   }
-
-  const totalWealth = user?.accounts.reduce((sum, acc) => sum + acc.balance, 0) || 0;
-
-  const handleTransfer = (accountId: string) => {
-    setSelectedAccountId(accountId);
-    setTransferModalOpen(true);
-  };
-
-  const handleViewTransactions = (accountId: string) => {
-    setLocation(`/transactions?account=${accountId}`);
-  };
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header userName={user?.name} />
-
-      <main className="max-w-7xl mx-auto px-4 md:px-8 py-8 space-y-8">
-        <div className="space-y-2">
-          {isLoading ? (
-            <>
-              <Skeleton className="h-8 w-64" />
-              <Skeleton className="h-6 w-48" />
-            </>
-          ) : (
-            <>
-              <h1 className="text-3xl md:text-4xl font-semibold tracking-tight" data-testid="text-greeting">
-                {getGreeting()}, {user?.name.split(" ")[0]}
-              </h1>
-              <p className="text-muted-foreground" data-testid="text-total-wealth">
-                Your total wealth: <span className="font-semibold text-foreground">{formatCurrency(totalWealth)}</span>
-              </p>
-            </>
-          )}
-        </div>
-
-        <div className="space-y-4">
-          <h2 className="text-xl font-semibold">Your Accounts</h2>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {isLoading ? (
-              <>
-                {[1, 2, 3].map((i) => (
-                  <Skeleton key={i} className="h-64 rounded-md" />
-                ))}
-              </>
-            ) : (
-              user?.accounts.map((account) => (
-                <AccountCard
-                  key={account.id}
-                  account={account}
-                  onTransfer={handleTransfer}
-                  onViewTransactions={handleViewTransactions}
-                />
-              ))
-            )}
-          </div>
-        </div>
-
-        {user && (
-          <TransferModal
-            open={transferModalOpen}
-            onOpenChange={setTransferModalOpen}
-            accounts={user.accounts}
-            defaultAccountId={selectedAccountId}
-          />
-        )}
-      </main>
+    <div className="flex min-h-screen flex-col p-4">
+      <h1 className="text-3xl font-bold mb-6">Welcome, {user.name}</h1>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Твои карты счетов — добавь код из твоего проекта */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Private Account</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p>IBAN: CH31 0833 9000 9876 5432 1</p>
+            <p>Balance: 1,850,000 CHF</p>
+            <Button onClick={() => router.push('/transfer?account=private')}>Transfer</Button>
+          </CardContent>
+        </Card>
+        {/* Добавь другие счета аналогично */}
+      </div>
     </div>
   );
 }

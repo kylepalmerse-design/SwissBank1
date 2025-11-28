@@ -1,93 +1,217 @@
 import express from 'express';
 import session from 'express-session';
-import passport from 'passport';
-import { Strategy as LocalStrategy } from 'passport-local';
+import MemoryStore from 'memorystore';
 import cookieParser from 'cookie-parser';
-import pgSimple from 'connect-pg-simple';
-import { Pool } from 'pg';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { users } from './lib/users-data.js';
+import { randomUUID } from 'crypto';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 10000;
+const MemoryStoreSession = MemoryStore(session);
 
-// Body parser для JSON (до session)
 app.use(express.json());
-
-// Body parser для form-data (urlencoded) перед session
 app.use(express.urlencoded({ extended: true }));
-
-// Cookie parser перед session
 app.use(cookieParser());
 
-// Pool для Postgres (NeonDB)
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-
-// Session с PG store для production (таблица sessions создастся автоматически)
-const PGStore = pgSimple(session);
 app.use(session({
-  store: new PGStore({ pool, tableName: 'sessions' }),
+  store: new MemoryStoreSession({ checkPeriod: 86400000 }),
   secret: process.env.SESSION_SECRET || 'swiss-bank-secret-2025',
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: process.env.NODE_ENV === 'production',
-    maxAge: 24 * 60 * 60 * 1000, // 1 день
+    secure: true,
     httpOnly: true,
-    sameSite: 'strict'
-  }
+    maxAge: 24 * 60 * 60 * 1000,
+    sameSite: 'lax',
+  },
 }));
 
-// Passport
-app.use(passport.initialize());
-app.use(passport.session());
+app.use((req, res, next) => {
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.set('Pragma', 'no-cache');
+  res.set('Expires', '0');
+  next();
+});
 
-passport.use(new LocalStrategy({
-  usernameField: 'username',
-  passwordField: 'password'
-}, async (username, password, done) => {
+declare module 'express-session' {
+  interface SessionData {
+    username: string;
+  }
+}
+
+// Login endpoint
+app.post('/api/auth/login', (req, res) => {
   try {
-    const { rows } = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
-    const user = rows[0];
-    if (!user || user.password !== password) {
-      return done(null, false, { message: 'Incorrect username or password' });
+    const { username, password } = req.body;
+    
+    if (!username || !password) {
+      return res.status(400).json({ message: 'Username and password required' });
     }
-    return done(null, user);
-  } catch (err) {
-    return done(err);
-  }
-}));
 
-passport.serializeUser((user, done) => done(null, user.username));
+    const userData = users[username];
+    if (!userData || userData.password !== password) {
+      return res.status(401).json({ message: 'Invalid credentials' });
+    }
 
-passport.deserializeUser(async (username, done) => {
-  try {
-    const { rows } = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
-    done(null, rows[0]);
-  } catch (err) {
-    done(err);
+    req.session.username = username;
+    res.json({
+      success: true,
+      user: {
+        username,
+        name: userData.name,
+        accounts: userData.accounts,
+        transactions: userData.transactions,
+      },
+    });
+  } catch (error: any) {
+    res.status(500).json({ message: error.message || 'Login failed' });
   }
 });
 
-// Роуты
-app.use(express.static(path.join(__dirname, '../dist/public'))); // Фронт
-
-app.post('/api/auth/login', passport.authenticate('local', { failureMessage: true }), (req, res) => {
-  res.json({ success: true, user: { username: req.user.username } });
+// Logout endpoint
+app.post('/api/auth/logout', (req, res) => {
+  req.session.destroy((err) => {
+    if (err) {
+      return res.status(500).json({ message: 'Logout failed' });
+    }
+    res.clearCookie('connect.sid');
+    res.json({ success: true });
+  });
 });
 
+// Get current user endpoint
 app.get('/api/user', (req, res) => {
-  if (req.isAuthenticated()) {
-    res.json({ user: req.user });
-  } else {
-    res.status(401).json({ message: 'Not authenticated' });
+  try {
+    if (!req.session.username) {
+      return res.status(401).json({ message: 'Not authenticated' });
+    }
+
+    const userData = users[req.session.username];
+    if (!userData) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.json({
+      username: req.session.username,
+      name: userData.name,
+      accounts: userData.accounts,
+      transactions: userData.transactions,
+    });
+  } catch (error: any) {
+    res.status(500).json({ message: error.message || 'Failed to get user' });
   }
 });
 
-// Catch-all для SPA
-app.get('*', (req, res) => res.sendFile(path.join(__dirname, '../dist/public/index.html')));
+// Create transfer endpoint
+app.post('/api/transfers', (req, res) => {
+  try {
+    if (!req.session.username) {
+      return res.status(401).json({ message: 'Not authenticated' });
+    }
 
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+    const { sourceAccountId, recipientIban, recipientName, amount, reference } = req.body;
+
+    const userData = users[req.session.username];
+    if (!userData) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const sourceAccount = userData.accounts.find((acc: any) => acc.id === sourceAccountId);
+    if (!sourceAccount) {
+      return res.status(400).json({ message: 'Source account not found' });
+    }
+
+    let fee = 25;
+    let isInternalCheck = false;
+
+    for (const udata of Object.values(users)) {
+      if ((udata as any).accounts.some((acc: any) => acc.iban === recipientIban)) {
+        isInternalCheck = true;
+        break;
+      }
+    }
+
+    if (isInternalCheck) {
+      fee = 0;
+    } else if (recipientIban.startsWith('CH')) {
+      fee = 12;
+    }
+
+    const totalAmount = amount + fee;
+
+    if (sourceAccount.balance < totalAmount) {
+      return res.status(400).json({ message: 'Insufficient funds' });
+    }
+
+    sourceAccount.balance -= totalAmount;
+
+    const outgoingTransaction = {
+      id: randomUUID(),
+      accountId: sourceAccountId,
+      type: 'outgoing' as const,
+      amount,
+      counterpartyName: recipientName || 'External Transfer',
+      counterpartyIban: recipientIban,
+      reference: reference || '',
+      date: new Date().toISOString(),
+      fee,
+    };
+
+    userData.transactions.push(outgoingTransaction);
+
+    let isInternal = false;
+    let recipientUser: string | null = null;
+    let recipientAccount: any = null;
+
+    for (const [uname, udata] of Object.entries(users)) {
+      const account = (udata as any).accounts.find((acc: any) => acc.iban === recipientIban);
+      if (account) {
+        isInternal = true;
+        recipientUser = uname;
+        recipientAccount = account;
+        break;
+      }
+    }
+
+    if (isInternal && recipientUser && recipientAccount) {
+      recipientAccount.balance += amount;
+
+      const incomingTransaction = {
+        id: randomUUID(),
+        accountId: recipientAccount.id,
+        type: 'incoming' as const,
+        amount,
+        counterpartyName: userData.name,
+        counterpartyIban: sourceAccount.iban,
+        reference: reference || '',
+        date: new Date().toISOString(),
+        fee: 0,
+      };
+
+      users[recipientUser].transactions.push(incomingTransaction);
+    }
+
+    res.json({
+      success: true,
+      transaction: outgoingTransaction,
+      isInternal,
+    });
+  } catch (error: any) {
+    res.status(400).json({ message: error.message || 'Transfer failed' });
+  }
+});
+
+app.use(express.static(path.join(__dirname, '../dist/public')));
+
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../dist/public/index.html'));
+});
+
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});

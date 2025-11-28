@@ -40,16 +40,25 @@ export default function Login() {
         body: JSON.stringify(data),
       });
 
+      if (!response.ok) {
+        const text = await response.text();
+        setError(text || 'Invalid credentials');
+        setIsLoading(false);
+        return;
+      }
+
       const result = await response.json();
 
       if (result.success) {
+        // Small delay to ensure session is set
+        await new Promise(resolve => setTimeout(resolve, 100));
         setLocation('/dashboard');
       } else {
         setError(result.message || 'Invalid credentials');
+        setIsLoading(false);
       }
     } catch (err: any) {
       setError(err?.message || 'Server error, try again later');
-    } finally {
       setIsLoading(false);
     }
   };

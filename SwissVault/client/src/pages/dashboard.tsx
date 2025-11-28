@@ -13,9 +13,17 @@ export default function Dashboard() {
   const [transferModalOpen, setTransferModalOpen] = useState(false);
   const [selectedAccountId, setSelectedAccountId] = useState<string | undefined>();
 
-  const { data: user, isLoading } = useQuery<User>({
+  const { data: user, isLoading, error } = useQuery<User>({
     queryKey: ["/api/user"],
+    retry: 3,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
   });
+
+  // Redirect to login if not authenticated
+  if (!user && !isLoading && error) {
+    setLocation("/login");
+    return null;
+  }
 
   if (!user && !isLoading) {
     setLocation("/login");

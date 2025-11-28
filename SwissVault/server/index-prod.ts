@@ -70,7 +70,7 @@ passport.deserializeUser(async (username, done) => {
 });
 
 // Роуты
-app.use(express.static(path.join(__dirname, '../dist'))); // Фронт
+app.use(express.static(path.join(__dirname, '../dist/public'))); // Фронт
 
 app.post('/api/auth/login', passport.authenticate('local', { failureMessage: true }), (req, res) => {
   res.json({ success: true, user: { username: req.user.username } });
@@ -85,6 +85,6 @@ app.get('/api/user', (req, res) => {
 });
 
 // Catch-all для SPA
-app.get('*', (req, res) => res.sendFile(path.join(__dirname, '../dist/index.html')));
+app.get('*', (req, res) => res.sendFile(path.join(__dirname, '../dist/public/index.html')));
 
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

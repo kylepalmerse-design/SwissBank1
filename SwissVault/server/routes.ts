@@ -76,6 +76,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get current user endpoint
   app.get("/api/user", async (req, res) => {
     try {
+      // Disable caching to prevent 304 responses
+      res.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+      res.set("Pragma", "no-cache");
+      res.set("Expires", "0");
+
       if (!req.session.username) {
         return res.status(401).json({ message: "Not authenticated" });
       }

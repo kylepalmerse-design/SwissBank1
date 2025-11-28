@@ -34,8 +34,7 @@ export default function Login() {
       const result = await response.json();
 
       if (result.success) {
-        // Редирект на дашборд после успешного логина
-        router.push('/dashboard');
+        router.push('/dashboard'); // Редирект на дашборд
       } else {
         form.setError('password', { message: 'Incorrect username or password' });
       }

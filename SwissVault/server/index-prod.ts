@@ -20,6 +20,9 @@ app.use(express.json());
 // Cookie parser перед session
 app.use(cookieParser());
 
+// Body parser для form-data (urlencoded) перед session
+app.use(express.urlencoded({ extended: true }));
+
 // Pool для Postgres (NeonDB)
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
@@ -30,12 +33,7 @@ app.use(session({
   secret: process.env.SESSION_SECRET || 'swiss-bank-secret-2025',
   resave: false,
   saveUninitialized: false,
-  cookie: {
-    secure: process.env.NODE_ENV === 'production',
-    maxAge: 24 * 60 * 60 * 1000, // 1 день
-    httpOnly: true,
-    sameSite: 'strict'
-  }
+  cookie: { path: '/', domain: '.onrender.com', secure: true, sameSite: 'none' }
 }));
 
 // Passport
@@ -67,10 +65,10 @@ passport.deserializeUser(async (username, done) => {
   } catch (err) {
     done(err);
   }
-});
+}));
 
 // Роуты
-app.use(express.static(path.join(__dirname, '../dist/public'))); // Фронт
+app.use(express.static(path.join(__dirname, '../dist'))); // Фронт
 
 app.post('/api/auth/login', passport.authenticate('local', { failureMessage: true }), (req, res) => {
   res.json({ success: true, user: { username: req.user.username } });
@@ -85,6 +83,6 @@ app.get('/api/user', (req, res) => {
 });
 
 // Catch-all для SPA
-app.get('*', (req, res) => res.sendFile(path.join(__dirname, '../dist/public/index.html')));
+app.get('*', (req, res) => res.sendFile(path.join(__dirname, '../dist/index.html')));
 
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

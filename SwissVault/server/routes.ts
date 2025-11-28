@@ -82,16 +82,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.set("Expires", "0");
 
       if (!req.session.username) {
+        console.error("GET /api/user - No username in session");
         return res.status(401).json({ message: "Not authenticated" });
       }
 
+      console.log(`GET /api/user - Fetching user: ${req.session.username}`);
       const user = await storage.getUser(req.session.username);
+      
       if (!user) {
+        console.error(`GET /api/user - User not found: ${req.session.username}`);
         return res.status(404).json({ message: "User not found" });
       }
 
+      console.log(`GET /api/user - Success: ${req.session.username}`);
       res.json(user);
     } catch (error: any) {
+      console.error("GET /api/user - Error:", error.message || error);
       res.status(500).json({ message: error.message || "Failed to get user" });
     }
   });

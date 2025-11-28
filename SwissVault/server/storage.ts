@@ -324,4 +324,6 @@ export class DbStorage implements IStorage {
   }
 }
 
-export const storage = new DbStorage();
+// Use MemStorage as fallback - if your Neon database doesn't have data, change this to: new MemStorage()
+// To use Neon database: new DbStorage()
+export const storage = new MemStorage();

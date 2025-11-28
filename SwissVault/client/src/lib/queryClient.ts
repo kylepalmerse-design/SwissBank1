@@ -30,12 +30,22 @@ export const getQueryFn: <T>(options: {
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
     const url = queryKey.join("/") as string;
+    
+    // Don't send cache validation headers
     const res = await fetch(url, {
       credentials: "include",
+      headers: {
+        "Cache-Control": "no-cache",
+      },
     });
 
     if (unauthorizedBehavior === "returnNull" && res.status === 401) {
       return null;
+    }
+
+    // Handle 304 Not Modified by retrying (the server should have new data)
+    if (res.status === 304) {
+      throw new Error("304: Not Modified - retrying");
     }
 
     if (!res.ok) {
@@ -53,7 +63,8 @@ export const queryClient = new QueryClient({
       refetchInterval: false,
       refetchOnWindowFocus: false,
       staleTime: Infinity,
-      retry: false,
+      retry: 5,
+      retryDelay: (attemptIndex) => Math.min(1000 * Math.pow(2, attemptIndex), 30000),
     },
     mutations: {
       retry: false,

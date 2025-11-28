@@ -1,12 +1,11 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import session from "express-session";
-import ConnectPgSimple from "connect-pg-simple";
-import { Pool } from "pg";
+import MemoryStore from "memorystore";
 import { storage } from "./storage";
 import { loginSchema, transferSchema } from "@shared/schema";
 
-const PostgresSessionStore = ConnectPgSimple(session);
+const MemoryStoreSession = MemoryStore(session);
 
 declare module "express-session" {
   interface SessionData {
@@ -15,18 +14,11 @@ declare module "express-session" {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Create PostgreSQL pool for sessions
-  const pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-  });
-
-  // Session middleware with PostgreSQL storage
+  // Session middleware with in-memory storage
   app.use(
     session({
-      store: new PostgresSessionStore({
-        pool,
-        tableName: "session",
-        createTableIfMissing: true,
+      store: new MemoryStoreSession({
+        checkPeriod: 86400000, // 24 hours
       }),
       secret: process.env.SESSION_SECRET || "helvetia-private-bank-secret-key-2024",
       resave: false,

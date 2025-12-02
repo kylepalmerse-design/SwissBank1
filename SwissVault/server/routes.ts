@@ -14,11 +14,10 @@ declare module "express-session" {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Session middleware with in-memory storage
   app.use(
     session({
       store: new MemoryStoreSession({
-        checkPeriod: 86400000, // 24 hours
+        checkPeriod: 86400000,
       }),
       secret: process.env.SESSION_SECRET || "helvetia-private-bank-secret-key-2024",
       resave: false,
@@ -26,13 +25,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       cookie: {
         secure: process.env.NODE_ENV === "production",
         httpOnly: true,
-        maxAge: 24 * 60 * 60 * 1000, // 24 hours
-        sameSite: "lax",
+        maxAge: 24 * 60 * 60 * 1000,
+        sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
       },
     })
   );
 
-  // Login endpoint
   app.post("/api/auth/login", async (req, res) => {
     try {
       const result = loginSchema.safeParse(req.body);
@@ -54,7 +52,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Logout endpoint
   app.post("/api/auth/logout", (req, res) => {
     req.session.destroy((err) => {
       if (err) {
@@ -65,10 +62,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
-  // Get current user endpoint
   app.get("/api/user", async (req, res) => {
     try {
-      // Disable caching to prevent 304 responses
       res.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
       res.set("Pragma", "no-cache");
       res.set("Expires", "0");
@@ -94,7 +89,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Create transfer endpoint
   app.post("/api/transfers", async (req, res) => {
     try {
       if (!req.session.username) {

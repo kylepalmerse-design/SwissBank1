@@ -51,10 +51,8 @@ export class MemStorage implements IStorage {
       throw new Error("Source account not found");
     }
 
-    // Calculate fee: Internal = 0, Swiss external = 12, International = 25
-    let fee = 25; // Default international fee
+    let fee = 25;
     
-    // Check if internal transfer first
     let isInternalCheck = false;
     for (const udata of Object.values(users)) {
       if (udata.accounts.some(acc => acc.iban === transfer.recipientIban)) {
@@ -64,9 +62,9 @@ export class MemStorage implements IStorage {
     }
     
     if (isInternalCheck) {
-      fee = 0; // Internal transfers are free
+      fee = 0;
     } else if (transfer.recipientIban.startsWith("CH")) {
-      fee = 12; // Swiss external IBAN
+      fee = 12;
     }
     
     const totalAmount = transfer.amount + fee;
@@ -75,7 +73,6 @@ export class MemStorage implements IStorage {
       throw new Error("Insufficient funds");
     }
 
-    // Check if recipient is another user in the system (internal transfer)
     let isInternal = false;
     let recipientUser: string | null = null;
     let recipientAccount: any = null;
@@ -90,10 +87,8 @@ export class MemStorage implements IStorage {
       }
     }
 
-    // Deduct from source account
     sourceAccount.balance -= totalAmount;
 
-    // Create outgoing transaction for sender
     const outgoingTransaction: Transaction = {
       id: randomUUID(),
       accountId: transfer.sourceAccountId,
@@ -108,7 +103,6 @@ export class MemStorage implements IStorage {
 
     userData.transactions.push(outgoingTransaction);
 
-    // If internal transfer, add to recipient's account and create incoming transaction
     if (isInternal && recipientUser && recipientAccount) {
       recipientAccount.balance += transfer.amount;
 
@@ -219,7 +213,6 @@ export class DbStorage implements IStorage {
       throw new Error("Source account not found");
     }
 
-    // Check if recipient is an internal account
     const [recipientAccount] = await db
       .select()
       .from(accountsTable)
@@ -228,7 +221,6 @@ export class DbStorage implements IStorage {
 
     const isInternal = !!recipientAccount;
     
-    // Calculate fee
     let fee = 25;
     if (isInternal) {
       fee = 0;
@@ -242,14 +234,12 @@ export class DbStorage implements IStorage {
       throw new Error("Insufficient funds");
     }
 
-    // Update source account balance
     const newSourceBalance = sourceAccount.balance - totalAmount;
     await db
       .update(accountsTable)
       .set({ balance: newSourceBalance.toString() })
       .where(eq(accountsTable.id, transfer.sourceAccountId));
 
-    // Get recipient name for transaction
     let counterpartyName = transfer.recipientName || "External Transfer";
     if (isInternal && recipientAccount) {
       const [recipientUser] = await db
@@ -263,7 +253,6 @@ export class DbStorage implements IStorage {
       }
     }
 
-    // Create outgoing transaction
     const [outgoingTx] = await db
       .insert(transactionsTable)
       .values({
@@ -278,7 +267,6 @@ export class DbStorage implements IStorage {
       })
       .returning();
 
-    // If internal transfer, update recipient account and create incoming transaction
     if (isInternal && recipientAccount) {
       const newRecipientBalance = parseFloat(recipientAccount.balance) + transfer.amount;
       await db
@@ -324,6 +312,4 @@ export class DbStorage implements IStorage {
   }
 }
 
-// Use MemStorage as fallback - if your Neon database doesn't have data, change this to: new MemStorage()
-// To use Neon database: new DbStorage()
-export const storage = new MemStorage();
+export const storage = new DbStorage();

@@ -4,7 +4,8 @@
   "description": "Swiss Vault project",
   "main": "dist/server.js",
   "scripts": {
-    "build": "npx vite build && npx esbuild server/index-prod.ts --platform=node --packages=external --bundle --format=esm --outfile=dist/server.js",
+  "build": "npx vite build --root frontend && npx esbuild server/index-prod.ts --platform=node --packages=external --bundle --format=esm --outfile=dist/server.js"
+}
     "start": "node dist/server.js",
     "dev": "vite"
   },

@@ -1,18 +1,28 @@
 import express from 'express';
-import path from 'path';
+import cors from 'cors';
+import { neon } from '@neondatabase/serverless';
+import { drizzle } from 'drizzle-orm/neon-http';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const port = process.env.PORT || 3000;
 
-// Статика для фронтенда
-const staticPath = path.resolve('./dist/public');
-app.use(express.static(staticPath));
+app.use(cors());
+app.use(express.json());
 
-// Любые остальные маршруты направляем на index.html
-app.get('*', (req, res) => {
-  res.sendFile(path.join(staticPath, 'index.html'));
+// Подключение к Neon (замените на вашу схему)
+const sql = neon(process.env.DATABASE_URL!);
+const db = drizzle(sql);
+
+// Пример роута (добавьте ваши)
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', db: 'connected' });
 });
 
-app.listen(PORT, () => {
-  console.log(`Server started on port ${PORT}`);
+// Ваши роуты для SwissBank здесь...
+
+app.listen(port, () => {
+  console.log(`Server running on port ${port}`);
 });

@@ -18,10 +18,11 @@
   "devDependencies": {
     "vite": "^5.4.8",
     "esbuild": "^0.21.5",
-    "typescript": "^5.6.2",
+    "typescript": "^5.5.4",
     "tsx": "^4.19.1",
     "concurrently": "^8.2.2",
-    "@types/express": "^4.19.2",
-    "@types/cors": "^2.8.17"
+    "@types/express": "^4.17.21",
+    "@types/cors": "^2.8.17",
+    "@types/node": "^22.7.4"
   }
 }

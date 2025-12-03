@@ -7,15 +7,19 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 
-// если у тебя сборка фронта кладёт клиентские файлы в dist/public
-const staticPath = path.join(__dirname, "..", "dist", "public");
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-app.use(express.static(staticPath));
+// Папка со статикой Vite
+const staticDir = path.join(__dirname, "client");
+app.use(express.static(staticDir));
 
-// — остальные маршруты + API, как у тебя было
+// Fallback на index.html
+app.get("*", (_, res) => {
+  res.sendFile(path.join(staticDir, "index.html"));
+});
 
-// старт сервера
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`Server running on ${PORT}`);
 });

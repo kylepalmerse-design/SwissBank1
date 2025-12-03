@@ -1,21 +1,12 @@
 {
-  "name": "swiss-vault",
+  "name": "swissbank",
   "version": "1.0.0",
-  "type": "module",
+  "private": true,
+  "workspaces": [
+    "SwissVault"
+  ],
   "scripts": {
-    "dev": "vite",
-    "build": "vite build && esbuild server/index-prod.ts --platform=node --bundle --format=esm --outfile=dist/server.js",
-    "start": "NODE_ENV=production node dist/server.js"
-  },
-  "dependencies": {
-    "express": "^4.19.2",
-    "cookie-parser": "^1.4.6",
-    "cors": "^2.8.5",
-    "dotenv": "^16.4.5",
-    "pg": "^8.11.3",
-    "vite": "^5.4.0",
-    "esbuild": "^0.21.5",
-    "typescript": "^5.6.3",
-    "@types/node": "^22.7.4"
+    "build": "npm --workspace SwissVault run build",
+    "start": "node SwissVault/dist/server.js"
   }
 }

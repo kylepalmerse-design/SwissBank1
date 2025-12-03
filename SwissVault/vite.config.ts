@@ -6,9 +6,10 @@ export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, 'client'),
+      '@': path.resolve(__dirname, 'client/src'),
       '@shared': path.resolve(__dirname, 'shared')
-    }
+    },
+    extensions: ['.tsx', '.ts', '.jsx', '.js']
   },
   root: 'client',
   build: {

@@ -1,23 +1,21 @@
+import express from "express";
 import path from "path";
 import { fileURLToPath } from "url";
-import { type Express } from "express";
-import { type Server } from "http";
-import runApp from "./app";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-export async function setupProd(app: Express, server: Server) {
-  // Serve static files from the dist/public directory
-  const staticPath = path.resolve(__dirname, "../public");
-  app.use(express.static(staticPath));
+const app = express();
 
-  // Catch-all route to serve index.html for client-side routing
-  app.use("*", (_req, res) => {
-    res.sendFile(path.resolve(staticPath, "index.html"));
-  });
-}
+// если у тебя сборка фронта кладёт клиентские файлы в dist/public
+const staticPath = path.join(__dirname, "..", "dist", "public");
 
-(async () => {
-  await runApp(setupProd);
-})();
+app.use(express.static(staticPath));
+
+// — остальные маршруты + API, как у тебя было
+
+// старт сервера
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});

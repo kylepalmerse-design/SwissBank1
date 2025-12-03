@@ -2,7 +2,6 @@
   "name": "swiss-vault",
   "version": "1.0.0",
   "private": true,
-  "type": "module",
   "scripts": {
     "build": "npx vite build && npx esbuild server/index-prod.ts --platform=node --bundle --minify --format=cjs --outfile=dist/server.js",
     "start": "node dist/server.js",

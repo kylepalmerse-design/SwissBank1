@@ -1,28 +1,23 @@
 import express from 'express';
+import path from 'path';
 import cors from 'cors';
-import { neon } from '@neondatabase/serverless';
-import { drizzle } from 'drizzle-orm/neon-http';
 import dotenv from 'dotenv';
 
 dotenv.config();
 
 const app = express();
-const port = process.env.PORT || 3000;
-
 app.use(cors());
 app.use(express.json());
 
-// Подключение к Neon (замените на вашу схему)
-const sql = neon(process.env.DATABASE_URL!);
-const db = drizzle(sql);
+// Отдаём собранный Vite-фронтенд
+app.use(express.static(path.join(__dirname, '../dist')));
 
-// Пример роута (добавьте ваши)
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', db: 'connected' });
+// Все остальные запросы — на index.html (чтобы работали роуты React Router и т.п.)
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../dist/index.html'));
 });
 
-// Ваши роуты для SwissBank здесь...
-
-app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`SwissVault live on port ${PORT}`);
 });

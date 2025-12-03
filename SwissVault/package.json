@@ -5,8 +5,8 @@
   "main": "dist/server.js",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build && esbuild server/index-prod.ts --platform=node --bundle --format=esm --outfile=dist/server.js",
+    "dev": "npx vite",
+    "build": "npx vite build && npx esbuild server/index-prod.ts --platform=node --bundle --format=esm --outfile=dist/server.js",
     "start": "NODE_ENV=production node dist/server.js"
   },
   "dependencies": {

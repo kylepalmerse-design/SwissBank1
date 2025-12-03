@@ -1,9 +1,18 @@
 import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    // Добавьте плагины, если используете React/Vue, напр. react()
+  ],
   build: {
-    outDir: 'dist/public'
-  }
+    outDir: 'dist',
+    emptyOutDir: true,
+    sourcemap: true,
+  },
+  server: {
+    port: 5173,
+    proxy: {
+      '/api': 'http://localhost:3000', // Прокси для backend в dev
+    },
+  },
 });

@@ -1,0 +1,12 @@
+{
+  "name": "swissbank",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "SwissVault"
+  ],
+  "scripts": {
+    "build": "npm --workspace SwissVault run build",
+    "start": "node SwissVault/dist/server.js"
+  }
+}
